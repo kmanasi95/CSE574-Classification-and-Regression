@@ -125,46 +125,46 @@ def mapNonLinear(x,p):
 
 # Main script
 
-## Problem 1
-## load the sample data                                                                 
-#if sys.version_info.major == 2:
-#    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'))
-#else:
-#    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'),encoding = 'latin1')
-#
-## LDA
-#means,covmat = ldaLearn(X,y)
-#ldaacc,ldares = ldaTest(means,covmat,Xtest,ytest)
-#print('LDA Accuracy = '+str(ldaacc))
-## QDA
-#means,covmats = qdaLearn(X,y)
-#qdaacc,qdares = qdaTest(means,covmats,Xtest,ytest)
-#print('QDA Accuracy = '+str(qdaacc))
-#
-## plotting boundaries
-#x1 = np.linspace(-5,20,100)
-#x2 = np.linspace(-5,20,100)
-#xx1,xx2 = np.meshgrid(x1,x2)
-#xx = np.zeros((x1.shape[0]*x2.shape[0],2))
-#xx[:,0] = xx1.ravel()
-#xx[:,1] = xx2.ravel()
-#
-#fig = plt.figure(figsize=[12,6])
-#plt.subplot(1, 2, 1)
-#
-#zacc,zldares = ldaTest(means,covmat,xx,np.zeros((xx.shape[0],1)))
-#plt.contourf(x1,x2,zldares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
-#plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
-#plt.title('LDA')
-#
-#plt.subplot(1, 2, 2)
-#
-#zacc,zqdares = qdaTest(means,covmats,xx,np.zeros((xx.shape[0],1)))
-#plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
-#plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
-#plt.title('QDA')
-#
-#plt.show()
+# Problem 1
+# load the sample data                                                                 
+if sys.version_info.major == 2:
+    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'))
+else:
+    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'),encoding = 'latin1')
+
+# LDA
+means,covmat = ldaLearn(X,y)
+ldaacc,ldares = ldaTest(means,covmat,Xtest,ytest)
+print('LDA Accuracy = '+str(ldaacc))
+# QDA
+means,covmats = qdaLearn(X,y)
+qdaacc,qdares = qdaTest(means,covmats,Xtest,ytest)
+print('QDA Accuracy = '+str(qdaacc))
+
+# plotting boundaries
+x1 = np.linspace(-5,20,100)
+x2 = np.linspace(-5,20,100)
+xx1,xx2 = np.meshgrid(x1,x2)
+xx = np.zeros((x1.shape[0]*x2.shape[0],2))
+xx[:,0] = xx1.ravel()
+xx[:,1] = xx2.ravel()
+
+fig = plt.figure(figsize=[12,6])
+plt.subplot(1, 2, 1)
+
+zacc,zldares = ldaTest(means,covmat,xx,np.zeros((xx.shape[0],1)))
+plt.contourf(x1,x2,zldares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
+plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
+plt.title('LDA')
+
+plt.subplot(1, 2, 2)
+
+zacc,zqdares = qdaTest(means,covmats,xx,np.zeros((xx.shape[0],1)))
+plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
+plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
+plt.title('QDA')
+
+plt.show()
 # Problem 2
 if sys.version_info.major == 2:
     X,y,Xtest,ytest = pickle.load(open('diabetes.pickle','rb'))
