@@ -105,6 +105,13 @@ def mapNonLinear(x,p):
     # Xp - (N x (p+1)) 
 	
     # IMPLEMENT THIS METHOD
+    
+    #Initialize output array Xp
+    Xp = np.zeros((x.shape[0], p+1))
+    
+    for i in range(x.shape[0]):
+        for j in range(p):
+            Xp[i][j] = x[i] ** j
     return Xp
 
 # Main script
