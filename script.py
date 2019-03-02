@@ -76,7 +76,7 @@ def learnRidgeRegression(X,y,lambd):
     # seting derivative d(J(w))/d(w) = 0, we get -2X'(y-Xw) + 2.lambd.w = 0
     # solving for w => w = (X'X + lambd.I)'*(X'y)
     dimR, dimC = X.shape
-    expression1 = np.matmul(X.T, X) + np.dot(lambd, np.identity(dimC))
+    expression1 = np.matmul(X.T, X) + lambd * np.identity(dimC)
     inv_expression1 = np.linalg.inv(expression1)
     expression2 = np.matmul(X.T, y)
     weight = np.matmul(inv_expression1, expression2)                                                   
@@ -94,14 +94,17 @@ def testOLERegression(w,Xtest,ytest):
     return (np.sum((ytest - np.dot(Xtest,w)) ** 2)) / Xtest.shape[0]
 
 def regressionObjVal(w, X, y, lambd):
-
     # compute squared error (scalar) and gradient of squared error with respect
     # to w (vector) for the given data X and y and the regularization parameter
-    # lambda                                                                  
-
-    # IMPLEMENT THIS METHOD                                             
+    # lambda
+    w = w.flatten() 
+    w = w.reshape(w.shape[0],1)
+    diff = y - np.matmul(X, w)
+    error = (np.dot(diff.T, diff) + (lambd*np.dot(w.T, w))) * 0.5
+    error_grad = -2*(np.matmul(X.T, diff)) + 2*lambd*w
+    error_grad = error_grad.reshape(error_grad.shape[0])
     return error, error_grad
-
+    
 def mapNonLinear(x,p):
     # Inputs:                                                                  
     # x - a single column vector (N x 1)                                       
@@ -121,46 +124,46 @@ def mapNonLinear(x,p):
 
 # Main script
 
-# Problem 1
-# load the sample data                                                                 
-if sys.version_info.major == 2:
-    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'))
-else:
-    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'),encoding = 'latin1')
-
-# LDA
-means,covmat = ldaLearn(X,y)
-ldaacc,ldares = ldaTest(means,covmat,Xtest,ytest)
-print('LDA Accuracy = '+str(ldaacc))
-# QDA
-means,covmats = qdaLearn(X,y)
-qdaacc,qdares = qdaTest(means,covmats,Xtest,ytest)
-print('QDA Accuracy = '+str(qdaacc))
-
-# plotting boundaries
-x1 = np.linspace(-5,20,100)
-x2 = np.linspace(-5,20,100)
-xx1,xx2 = np.meshgrid(x1,x2)
-xx = np.zeros((x1.shape[0]*x2.shape[0],2))
-xx[:,0] = xx1.ravel()
-xx[:,1] = xx2.ravel()
-
-fig = plt.figure(figsize=[12,6])
-plt.subplot(1, 2, 1)
-
-zacc,zldares = ldaTest(means,covmat,xx,np.zeros((xx.shape[0],1)))
-plt.contourf(x1,x2,zldares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
-plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
-plt.title('LDA')
-
-plt.subplot(1, 2, 2)
-
-zacc,zqdares = qdaTest(means,covmats,xx,np.zeros((xx.shape[0],1)))
-plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
-plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
-plt.title('QDA')
-
-plt.show()
+## Problem 1
+## load the sample data                                                                 
+#if sys.version_info.major == 2:
+#    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'))
+#else:
+#    X,y,Xtest,ytest = pickle.load(open('sample.pickle','rb'),encoding = 'latin1')
+#
+## LDA
+#means,covmat = ldaLearn(X,y)
+#ldaacc,ldares = ldaTest(means,covmat,Xtest,ytest)
+#print('LDA Accuracy = '+str(ldaacc))
+## QDA
+#means,covmats = qdaLearn(X,y)
+#qdaacc,qdares = qdaTest(means,covmats,Xtest,ytest)
+#print('QDA Accuracy = '+str(qdaacc))
+#
+## plotting boundaries
+#x1 = np.linspace(-5,20,100)
+#x2 = np.linspace(-5,20,100)
+#xx1,xx2 = np.meshgrid(x1,x2)
+#xx = np.zeros((x1.shape[0]*x2.shape[0],2))
+#xx[:,0] = xx1.ravel()
+#xx[:,1] = xx2.ravel()
+#
+#fig = plt.figure(figsize=[12,6])
+#plt.subplot(1, 2, 1)
+#
+#zacc,zldares = ldaTest(means,covmat,xx,np.zeros((xx.shape[0],1)))
+#plt.contourf(x1,x2,zldares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
+#plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
+#plt.title('LDA')
+#
+#plt.subplot(1, 2, 2)
+#
+#zacc,zqdares = qdaTest(means,covmats,xx,np.zeros((xx.shape[0],1)))
+#plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
+#plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
+#plt.title('QDA')
+#
+#plt.show()
 # Problem 2
 if sys.version_info.major == 2:
     X,y,Xtest,ytest = pickle.load(open('diabetes.pickle','rb'))
@@ -210,7 +213,7 @@ opts = {'maxiter' : 20}    # Preferred value.
 w_init = np.ones((X_i.shape[1],1))
 for lambd in lambdas:
     args = (X_i, y, lambd)
-    w_l = minimize(regressionObjVal, w_init, jac=True, args=args,method='CG', options=opts)
+    w_l = minimize(regressionObjVal, w_init, jac=True, args=args, method='CG', options=opts)
     w_l = np.transpose(np.array(w_l.x))
     w_l = np.reshape(w_l,[len(w_l),1])
     mses4_train[i] = testOLERegression(w_l,X_i,y)
@@ -229,7 +232,6 @@ plt.plot(lambdas,mses3)
 plt.title('MSE for Test Data')
 plt.legend(['Using scipy.minimize','Direct minimization'])
 plt.show()
-
 
 # Problem 5
 pmax = 7
