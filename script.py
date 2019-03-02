@@ -72,10 +72,15 @@ def learnRidgeRegression(X,y,lambd):
     # y = N x 1 
     # lambd = ridge parameter (scalar)
     # Output:                                                                  
-    # w = d x 1                                                                
-
-    # IMPLEMENT THIS METHOD                                                   
-    return w
+    # w = d x 1
+    # seting derivative d(J(w))/d(w) = 0, we get -2X'(y-Xw) + 2.lambd.w = 0
+    # solving for w => w = (X'X + lambd.I)'*(X'y)
+    dimR, dimC = X.shape
+    expression1 = np.matmul(X.T, X) + np.dot(lambd, np.identity(dimC))
+    inv_expression1 = np.linalg.inv(expression1)
+    expression2 = np.matmul(X.T, y)
+    weight = np.matmul(inv_expression1, expression2)                                                   
+    return weight
 
 def testOLERegression(w,Xtest,ytest):
     # Inputs:
