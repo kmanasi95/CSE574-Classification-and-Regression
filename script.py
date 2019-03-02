@@ -118,8 +118,9 @@ def mapNonLinear(x,p):
     Xp = np.zeros((x.shape[0], p+1))
     
     for i in range(x.shape[0]):
-        for j in range(p):
+        for j in range(p+1):
             Xp[i][j] = x[i] ** j
+            
     return Xp
 
 # Main script
@@ -235,7 +236,7 @@ plt.show()
 
 # Problem 5
 pmax = 7
-lambda_opt = 0 # REPLACE THIS WITH lambda_opt estimated from Problem 3
+lambda_opt = lambdas[mses3.tolist().index(min(mses3))] # lambda_opt estimated from Problem 3
 mses5_train = np.zeros((pmax,2))
 mses5 = np.zeros((pmax,2))
 for p in range(pmax):
@@ -247,7 +248,7 @@ for p in range(pmax):
     w_d2 = learnRidgeRegression(Xd,y,lambda_opt)
     mses5_train[p,1] = testOLERegression(w_d2,Xd,y)
     mses5[p,1] = testOLERegression(w_d2,Xdtest,ytest)
-
+    
 fig = plt.figure(figsize=[12,6])
 plt.subplot(1, 2, 1)
 plt.plot(range(pmax),mses5_train)
