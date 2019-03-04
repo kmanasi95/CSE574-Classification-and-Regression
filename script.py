@@ -12,13 +12,19 @@ def ldaLearn(X,y):
     # Inputs
     # X - a N x d matrix with each row corresponding to a training example
     # y - a N x 1 column vector indicating the labels for each training example
-    #
-    # Outputs
+    ## Outputs
+    
     # means - A d x k matrix containing learnt means for each of the k classes
     # covmat - A single d x d learnt covariance matrix 
     
-    # IMPLEMENT THIS METHOD 
-    return means,covmat
+    # IMPLEMENT THIS METHOD     
+    means=np.mean(X,axis=0)
+    means=np.mean(X,axis=1)        
+    #np.mean(X)
+    covmats = np.cov(X.T)    
+    return means,covmats
+
+
 
 def qdaLearn(X,y):
     # Inputs
@@ -54,6 +60,13 @@ def ldaTest(means,covmat,Xtest,ytest):
     # ypred - N x 1 column vector indicating the predicted labels
 
     # IMPLEMENT THIS METHOD
+    
+    covmatinverse=np.linalg.inv(covmat);
+    determinantcov=np.linalg.det(covmat);
+    gaussformula= np.zeros((Xtest.shape[0],means.shape[1]));
+    for i in range(means.shape[1]):
+        gaussformula[:,i] = np.exp(-0.5*np.sum((Xtest - means[:,i])*np.dot(covmatinverse, (Xtest - means[:,i]).T).T,1))/(np.sqrt(np.pi*2)*(np.power(covmatinverse,2)));
+    
     return acc,ypred
 
 def qdaTest(means,covmats,Xtest,ytest):
