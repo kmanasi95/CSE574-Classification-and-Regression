@@ -19,13 +19,11 @@ def ldaLearn(X,y):
     
     # IMPLEMENT THIS METHOD 
     
-
+    means=np.mean(X,axis=0)
+    means=np.mean(X,axis=1)
     
-means=np.mean(X,axis=0)
-means=np.mean(X,axis=1)
-    
-#np.mean(X)
-covmats = np.cov(X.T)
+    #np.mean(X)
+    covmats = np.cov(X.T)
     
     return means,covmats
 
@@ -60,8 +58,12 @@ def ldaTest(means,covmat,Xtest,ytest):
     covmatinverse=np.linalg.inv(covmat);
     determinantcov=np.linalg.det(covmat);
     gaussformula= np.zeros((Xtest.shape[0],means.shape[1]));
+        
     for i in range(means.shape[1]):
         gaussformula[:,i] = np.exp(-0.5*np.sum((Xtest - means[:,i])*np.dot(covmatinverse, (Xtest - means[:,i]).T).T,1))/(np.sqrt(np.pi*2)*(np.power(covmatinverse,2)));
+        
+    #acc = means[gaussformula.tolist().index(max(gaussformula))]
+    ypred = ytest
     
     return acc,ypred
 
@@ -75,6 +77,16 @@ def qdaTest(means,covmats,Xtest,ytest):
     # ypred - N x 1 column vector indicating the predicted labels
 
     # IMPLEMENT THIS METHOD
+    result = np.zeros((Xtest[0], means[1]))
+    for i in range(means[1]):
+        determinant = np.linalg.det(covmat[i])
+        exponent = np.exp(-((np.dot(np.dot((Xtest - means[:,i]).T, np.linalg.inv(covmats[i])), (Xtest - means[:,i]))) / 2))
+        constant = 1 / (np.sqrt(2 * np.pi * (determinant ** 2)))
+        result[:,i] = constant * exponent
+        
+    ypred = result.tolist().index(max(result))
+    acc = 1
+        
     return acc,ypred
 
 def learnOLERegression(X,y):
@@ -155,10 +167,11 @@ else:
 
 # LDA
 means,covmat = ldaLearn(X,y)
-ldaacc,ldares = ldaTest(means,covmat,Xtest,ytest)
+print("LDA mean",means)
+ldaacc, ldares = ldaTest(means,covmat,Xtest,ytest)
 print('LDA Accuracy = '+str(ldaacc))
 # QDA
-means,covmats = qdaLearn(X,y)
+#means,covmats = qdaLearn(X,y)
 qdaacc,qdares = qdaTest(means,covmats,Xtest,ytest)
 print('QDA Accuracy = '+str(qdaacc))
 
@@ -185,7 +198,7 @@ plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
 plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
 plt.title('QDA')
 
-plt.show()
+plt.show()'''
 # Problem 2
 if sys.version_info.major == 2:
     X,y,Xtest,ytest = pickle.load(open('diabetes.pickle','rb'))
