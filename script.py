@@ -17,14 +17,13 @@ def ldaLearn(X,y):
     # means - A d x k matrix containing learnt means for each of the k classes
     # covmat - A single d x d learnt covariance matrix 
     
-    # IMPLEMENT THIS METHOD 
-    
+
+    # IMPLEMENT THIS METHOD     
     means=np.mean(X,axis=0)
-    means=np.mean(X,axis=1)
-    
+    means=np.mean(X,axis=1)        
     #np.mean(X)
-    covmats = np.cov(X.T)
-    
+    covmats = np.cov(X.T)    
+
     return means,covmats
 
 
@@ -37,11 +36,20 @@ def qdaLearn(X,y):
     # Outputs
     # means - A d x k matrix containing learnt means for each of the k classes
     # covmats - A list of k d x d learnt covariance matrices for each of the k classes
-    
-    # IMPLEMENT THIS METHOD
-    
-  
-    
+    data_map = {}
+    means = []
+    covmats = []
+    for i in range(X.shape[0]):
+        key = int(y[i])
+        try:
+            data_map[key].append(X[i])
+        except KeyError:
+            data_map[key] = [X[i]]      
+    for key, value in data_map.items():
+        data_map[key] = np.asarray(data_map[key])
+        means.append(np.mean(data_map[key], axis=0))
+        covmats.append(np.cov(data_map[key].T))
+    means = np.asarray(means).T 
     return means,covmats
 
 def ldaTest(means,covmat,Xtest,ytest):
@@ -77,16 +85,26 @@ def qdaTest(means,covmats,Xtest,ytest):
     # ypred - N x 1 column vector indicating the predicted labels
 
     # IMPLEMENT THIS METHOD
-    result = np.zeros((Xtest[0], means[1]))
-    for i in range(means[1]):
-        determinant = np.linalg.det(covmat[i])
-        exponent = np.exp(-((np.dot(np.dot((Xtest - means[:,i]).T, np.linalg.inv(covmats[i])), (Xtest - means[:,i]))) / 2))
-        constant = 1 / (np.sqrt(2 * np.pi * (determinant ** 2)))
-        result[:,i] = constant * exponent
+    
+    ypred = []
+    acc = 0
+    for j in range(Xtest.shape[0]):
+        result = []
+        for i in range(means.shape[1]):
+            determinant = np.linalg.det(covmats[i])
+            exponent = np.exp(-((np.matmul(np.matmul((Xtest[j] - means.T[i]).T, np.linalg.inv(covmats[i])), (Xtest[j] - means.T[i]))) / 2))
+            constant = 1 / (np.sqrt(2 * np.pi * (determinant ** 2)))
+            result.append(constant * exponent)
+            
+        ypred.append(np.argmax(result) + 1)
         
-    ypred = result.tolist().index(max(result))
-    acc = 1
+        if ypred[j] == ytest[j]:
+            acc+=1
         
+    acc = acc/Xtest.shape[0]
+    ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
+    print(ypred.shape)
+    
     return acc,ypred
 
 def learnOLERegression(X,y):
@@ -170,8 +188,9 @@ means,covmat = ldaLearn(X,y)
 print("LDA mean",means)
 ldaacc, ldares = ldaTest(means,covmat,Xtest,ytest)
 print('LDA Accuracy = '+str(ldaacc))
+
 # QDA
-#means,covmats = qdaLearn(X,y)
+means,covmats = qdaLearn(X,y)
 qdaacc,qdares = qdaTest(means,covmats,Xtest,ytest)
 print('QDA Accuracy = '+str(qdaacc))
 
@@ -198,7 +217,8 @@ plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
 plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
 plt.title('QDA')
 
-plt.show()'''
+plt.show()
+
 # Problem 2
 if sys.version_info.major == 2:
     X,y,Xtest,ytest = pickle.load(open('diabetes.pickle','rb'))
@@ -236,8 +256,8 @@ plt.title('MSE for Train Data')
 plt.subplot(1, 2, 2)
 plt.plot(lambdas,mses3)
 plt.title('MSE for Test Data')
-
 plt.show()
+
 # Problem 4
 k = 101
 lambdas = np.linspace(0, 1, num=k)
