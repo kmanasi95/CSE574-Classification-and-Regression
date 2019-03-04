@@ -19,13 +19,21 @@ def ldaLearn(X,y):
     
 
     # IMPLEMENT THIS METHOD     
-    means=np.mean(X,axis=0)
-    means=np.mean(X,axis=1)        
-    #np.mean(X)
-    covmats = np.cov(X.T)    
-
+    data_map = {}
+    means = []
+    for i in range(X.shape[0]):
+        key = int(y[i])
+        try:
+            data_map[key].append(X[i])
+        except KeyError:
+            data_map[key] = [X[i]]      
+    for key, value in data_map.items():
+        data_map[key] = np.asarray(data_map[key])
+        means.append(np.mean(data_map[key], axis=0))
+    means = np.asarray(means).T 
+    
+    covmats = np.cov(X.T)
     return means,covmats
-
 
 
 def qdaLearn(X,y):
@@ -63,15 +71,22 @@ def ldaTest(means,covmat,Xtest,ytest):
 
     # IMPLEMENT THIS METHOD
     
-    covmatinverse=np.linalg.inv(covmat);
-    determinantcov=np.linalg.det(covmat);
-    gaussformula= np.zeros((Xtest.shape[0],means.shape[1]));
+    ypred = []
+    acc = 0
+    for j in range(Xtest.shape[0]):
+        result = []
+        for i in range(means.shape[1]):
+            exponent = ((np.matmul(np.matmul((Xtest[j] - means.T[i]).T, np.linalg.inv(covmat)), (Xtest[j] - means.T[i]))) / 2)
+            result.append(exponent)
+            
+        ypred.append(np.argmin(result) +1)
         
-    for i in range(means.shape[1]):
-        gaussformula[:,i] = np.exp(-0.5*np.sum((Xtest - means[:,i])*np.dot(covmatinverse, (Xtest - means[:,i]).T).T,1))/(np.sqrt(np.pi*2)*(np.power(covmatinverse,2)));
+        if ypred[j] == ytest[j]:
+            acc+=1
         
-    #acc = means[gaussformula.tolist().index(max(gaussformula))]
-    ypred = ytest
+    print(ypred)
+    acc = acc/Xtest.shape[0]
+    ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
     
     return acc,ypred
 
@@ -103,7 +118,6 @@ def qdaTest(means,covmats,Xtest,ytest):
         
     acc = acc/Xtest.shape[0]
     ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
-    print(ypred.shape)
     
     return acc,ypred
 
@@ -207,14 +221,14 @@ plt.subplot(1, 2, 1)
 
 zacc,zldares = ldaTest(means,covmat,xx,np.zeros((xx.shape[0],1)))
 plt.contourf(x1,x2,zldares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
-plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
+plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest.ravel())
 plt.title('LDA')
 
 plt.subplot(1, 2, 2)
 
 zacc,zqdares = qdaTest(means,covmats,xx,np.zeros((xx.shape[0],1)))
 plt.contourf(x1,x2,zqdares.reshape((x1.shape[0],x2.shape[0])),alpha=0.3)
-plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest)
+plt.scatter(Xtest[:,0],Xtest[:,1],c=ytest.ravel())
 plt.title('QDA')
 
 plt.show()
@@ -302,6 +316,9 @@ for p in range(pmax):
     w_d2 = learnRidgeRegression(Xd,y,lambda_opt)
     mses5_train[p,1] = testOLERegression(w_d2,Xd,y)
     mses5[p,1] = testOLERegression(w_d2,Xdtest,ytest)
+    
+#print("Train error when lambda is 0 and optimal : ",mses5_train)
+#print("Test error when lambda is 0 and optimal : ",mses5) 
     
 fig = plt.figure(figsize=[12,6])
 plt.subplot(1, 2, 1)
