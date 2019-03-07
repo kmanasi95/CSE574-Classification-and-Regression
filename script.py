@@ -12,13 +12,9 @@ def ldaLearn(X,y):
     # Inputs
     # X - a N x d matrix with each row corresponding to a training example
     # y - a N x 1 column vector indicating the labels for each training example
-    ## Outputs
-    
+    # Outputs
     # means - A d x k matrix containing learnt means for each of the k classes
     # covmat - A single d x d learnt covariance matrix 
-    
-
-    # IMPLEMENT THIS METHOD     
     data_map = {}
     means = []
     for i in range(X.shape[0]):
@@ -31,10 +27,10 @@ def ldaLearn(X,y):
         data_map[key] = np.asarray(data_map[key])
         means.append(np.mean(data_map[key], axis=0))
     means = np.asarray(means).T 
-    
-    covmats = np.cov(X.T)
-    return means,covmats
-
+    meanX = np.sum(X, axis=0) / X.shape[0]
+    variance = np.sum(np.square(X - meanX), axis=0) / X.shape[0] 
+    covmats = np.diag(variance)
+    return means, covmats
 
 def qdaLearn(X,y):
     # Inputs
@@ -54,9 +50,11 @@ def qdaLearn(X,y):
         except KeyError:
             data_map[key] = [X[i]]      
     for key, value in data_map.items():
-        data_map[key] = np.asarray(data_map[key])
-        means.append(np.mean(data_map[key], axis=0))
-        covmats.append(np.cov(data_map[key].T))
+        x = np.asarray(data_map[key])
+        mean = np.sum(x, axis=0) / x.shape[0]
+        variance = np.sum(np.square(x - mean), axis=0) / x.shape[0] 
+        means.append(mean)
+        covmats.append(np.diag(variance))
     means = np.asarray(means).T 
     return means,covmats
 
@@ -68,27 +66,27 @@ def ldaTest(means,covmat,Xtest,ytest):
     # Outputs
     # acc - A scalar accuracy value
     # ypred - N x 1 column vector indicating the predicted labels
-
-    # IMPLEMENT THIS METHOD
-    
     ypred = []
     acc = 0
+    means = means.T
+    inv_cov = covmat
+    for i in range(covmat.shape[0]):
+        inv_cov[i][i] = 1 / inv_cov[i][i]
     for j in range(Xtest.shape[0]):
-        result = []
-        for i in range(means.shape[1]):
-            exponent = ((np.matmul(np.matmul((Xtest[j] - means.T[i]).T, np.linalg.inv(covmat)), (Xtest[j] - means.T[i]))) / 2)
-            result.append(exponent)
-            
-        ypred.append(np.argmin(result) +1)
-        
+        best_prob = float('inf')
+        predict = 0
+        for i in range(means.shape[0]):
+            mean_diff = Xtest[j] - means[i]
+            exponent = np.matmul(np.matmul(mean_diff.T, inv_cov), mean_diff)
+            if exponent < best_prob:
+                best_prob = exponent
+                predict = i
+        ypred.append(predict+1)
         if ypred[j] == ytest[j]:
             acc+=1
-        
-    print(ypred)
-    acc = acc/Xtest.shape[0]
+    acc = acc / Xtest.shape[0]
     ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
-    
-    return acc,ypred
+    return acc, ypred
 
 def qdaTest(means,covmats,Xtest,ytest):
     # Inputs
@@ -98,27 +96,31 @@ def qdaTest(means,covmats,Xtest,ytest):
     # Outputs
     # acc - A scalar accuracy value
     # ypred - N x 1 column vector indicating the predicted labels
-
-    # IMPLEMENT THIS METHOD
-    
     ypred = []
     acc = 0
+    means = means.T
+    determinants = []
+    inv_covmats = []
+    for covmat in covmats:
+        inv_covmat = np.zeros(covmat.shape)
+        determinant = 1
+        for j in range(covmat.shape[0]):
+            determinant *= covmat[j][j]
+            inv_covmat[j][j] = 1/covmat[j][j]
+        determinants.append(determinant)
+        inv_covmats.append(inv_covmat)
     for j in range(Xtest.shape[0]):
         result = []
-        for i in range(means.shape[1]):
-            determinant = np.linalg.det(covmats[i])
-            exponent = np.exp(-((np.matmul(np.matmul((Xtest[j] - means.T[i]).T, np.linalg.inv(covmats[i])), (Xtest[j] - means.T[i]))) / 2))
-            constant = 1 / (np.sqrt(2 * np.pi * (determinant ** 2)))
+        for i in range(means.shape[0]):
+            mean_diff = Xtest[j] - means[i]
+            exponent = np.exp(-(np.matmul(np.matmul(mean_diff.T, inv_covmats[i]), mean_diff) / 2))
+            constant = 1 / (np.sqrt(2 * np.pi * (determinants[i] ** 2)))
             result.append(constant * exponent)
-            
         ypred.append(np.argmax(result) + 1)
-        
         if ypred[j] == ytest[j]:
             acc+=1
-        
     acc = acc/Xtest.shape[0]
     ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
-    
     return acc,ypred
 
 def learnOLERegression(X,y):
@@ -127,8 +129,6 @@ def learnOLERegression(X,y):
     # y = N x 1                                                               
     # Output: 
     # w = d x 1 
-	
-    # IMPLEMENT THIS METHOD 
     return np.dot(np.linalg.inv(np.dot(X.T,X)), np.dot(X.T,y))                                               
 
 def learnRidgeRegression(X,y,lambd):
@@ -154,8 +154,6 @@ def testOLERegression(w,Xtest,ytest):
     # ytest = X x 1
     # Output:
     # mse
-    
-    # IMPLEMENT THIS METHOD
     return (np.sum((ytest - np.dot(Xtest,w)) ** 2)) / Xtest.shape[0]
 
 def regressionObjVal(w, X, y, lambd):
@@ -177,15 +175,11 @@ def mapNonLinear(x,p):
     # Outputs:                                                                 
     # Xp - (N x (p+1)) 
 	
-    # IMPLEMENT THIS METHOD
-    
     #Initialize output array Xp
     Xp = np.zeros((x.shape[0], p+1))
-    
     for i in range(x.shape[0]):
         for j in range(p+1):
-            Xp[i][j] = x[i] ** j
-            
+            Xp[i][j] = x[i] ** j        
     return Xp
 
 # Main script
@@ -199,7 +193,6 @@ else:
 
 # LDA
 means,covmat = ldaLearn(X,y)
-print("LDA mean",means)
 ldaacc, ldares = ldaTest(means,covmat,Xtest,ytest)
 print('LDA Accuracy = '+str(ldaacc))
 
