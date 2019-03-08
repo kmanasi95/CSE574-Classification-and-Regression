@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 from scipy.optimize import minimize
 from scipy.io import loadmat
@@ -18,17 +19,22 @@ def ldaLearn(X,y):
     data_map = {}
     means = []
     for i in range(X.shape[0]):
-        key = int(y[i])
+        key = int(y[i]) - 1
         try:
             data_map[key].append(X[i])
         except KeyError:
-            data_map[key] = [X[i]]      
-    for key, value in data_map.items():
-        data_map[key] = np.asarray(data_map[key])
-        means.append(np.mean(data_map[key], axis=0))
-    means = np.asarray(means).T 
+            data_map[key] = [X[i]]
+    
+    # calculating mean
+    for i in range(len(data_map.keys())):
+        data_map[i] = np.asarray(data_map[i])
+        means.append(np.sum(data_map[i], axis=0) / data_map[i].shape[0])
+    means = np.asarray(means).T
+    
+    # calculating covariance matrix (diagonal matrix, variance as diagonal elements)
+    # LDA assumes all class have similar covariance matrix
     meanX = np.sum(X, axis=0) / X.shape[0]
-    variance = np.sum(np.square(X - meanX), axis=0) / X.shape[0] 
+    variance = np.sum(np.square(X - meanX), axis=0) / X.shape[0]
     covmats = np.diag(variance)
     return means, covmats
 
@@ -44,13 +50,16 @@ def qdaLearn(X,y):
     means = []
     covmats = []
     for i in range(X.shape[0]):
-        key = int(y[i])
+        key = int(y[i]) - 1
         try:
             data_map[key].append(X[i])
         except KeyError:
-            data_map[key] = [X[i]]      
-    for key, value in data_map.items():
-        x = np.asarray(data_map[key])
+            data_map[key] = [X[i]]
+            
+    # calculating mean and covaraince matrix together.
+    # QDA assumes diffenet class have different covariance matrix
+    for i in range(len(data_map.keys())):
+        x = np.asarray(data_map[i])
         mean = np.sum(x, axis=0) / x.shape[0]
         variance = np.sum(np.square(x - mean), axis=0) / x.shape[0] 
         means.append(mean)
@@ -69,23 +78,26 @@ def ldaTest(means,covmat,Xtest,ytest):
     ypred = []
     acc = 0
     means = means.T
+    
+    # calculating inverse of covariance matrix
     inv_cov = covmat
     for i in range(covmat.shape[0]):
         inv_cov[i][i] = 1 / inv_cov[i][i]
+ 
+    # predicting the class for Xtest using LDA, exponent coeff should be minimum for the class
     for j in range(Xtest.shape[0]):
-        best_prob = float('inf')
-        predict = 0
+        best_prob = float('inf') 
         for i in range(means.shape[0]):
             mean_diff = Xtest[j] - means[i]
             exponent = np.matmul(np.matmul(mean_diff.T, inv_cov), mean_diff)
             if exponent < best_prob:
                 best_prob = exponent
-                predict = i
-        ypred.append(predict+1)
+                predict = i+1
+        ypred.append(predict)
         if ypred[j] == ytest[j]:
             acc+=1
     acc = acc / Xtest.shape[0]
-    ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
+    ypred = np.asarray(ypred).reshape(ytest.shape[0], 1)
     return acc, ypred
 
 def qdaTest(means,covmats,Xtest,ytest):
@@ -99,6 +111,8 @@ def qdaTest(means,covmats,Xtest,ytest):
     ypred = []
     acc = 0
     means = means.T
+    
+    # calculating determinant and inverse of covariance matrix for each class
     determinants = []
     inv_covmats = []
     for covmat in covmats:
@@ -109,13 +123,16 @@ def qdaTest(means,covmats,Xtest,ytest):
             inv_covmat[j][j] = 1/covmat[j][j]
         determinants.append(determinant)
         inv_covmats.append(inv_covmat)
+    
+    # predicting the class for Xtest using QDA, qda should be maximum for the class
     for j in range(Xtest.shape[0]):
         result = []
         for i in range(means.shape[0]):
             mean_diff = Xtest[j] - means[i]
             exponent = np.exp(-(np.matmul(np.matmul(mean_diff.T, inv_covmats[i]), mean_diff) / 2))
             constant = 1 / (np.sqrt(2 * np.pi * (determinants[i] ** 2)))
-            result.append(constant * exponent)
+            qda = constant * exponent
+            result.append(qda)
         ypred.append(np.argmax(result) + 1)
         if ypred[j] == ytest[j]:
             acc+=1
@@ -138,6 +155,7 @@ def learnRidgeRegression(X,y,lambd):
     # lambd = ridge parameter (scalar)
     # Output:                                                                  
     # w = d x 1
+    
     # seting derivative d(J(w))/d(w) = 0, we get -2X'(y-Xw) + 2.lambd.w = 0
     # solving for w => w = (X'X + lambd.I)'*(X'y)
     dimR, dimC = X.shape
