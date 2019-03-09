@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 from scipy.optimize import minimize
 from scipy.io import loadmat
@@ -12,29 +13,30 @@ def ldaLearn(X,y):
     # Inputs
     # X - a N x d matrix with each row corresponding to a training example
     # y - a N x 1 column vector indicating the labels for each training example
-    ## Outputs
-    
+    # Outputs
     # means - A d x k matrix containing learnt means for each of the k classes
     # covmat - A single d x d learnt covariance matrix 
-    
-
-    # IMPLEMENT THIS METHOD     
     data_map = {}
     means = []
     for i in range(X.shape[0]):
-        key = int(y[i])
+        key = int(y[i]) - 1
         try:
             data_map[key].append(X[i])
         except KeyError:
-            data_map[key] = [X[i]]      
-    for key, value in data_map.items():
-        data_map[key] = np.asarray(data_map[key])
-        means.append(np.mean(data_map[key], axis=0))
-    means = np.asarray(means).T 
+            data_map[key] = [X[i]]
     
-    covmats = np.cov(X.T)
-    return means,covmats
-
+    # calculating mean
+    for i in range(len(data_map.keys())):
+        data_map[i] = np.asarray(data_map[i])
+        means.append(np.sum(data_map[i], axis=0) / data_map[i].shape[0])
+    means = np.asarray(means).T
+    
+    # calculating covariance matrix (diagonal matrix, variance as diagonal elements)
+    # LDA assumes all class have similar covariance matrix
+    meanX = np.sum(X, axis=0) / X.shape[0]
+    variance = np.sum(np.square(X - meanX), axis=0) / X.shape[0]
+    covmats = np.diag(variance)
+    return means, covmats
 
 def qdaLearn(X,y):
     # Inputs
@@ -48,15 +50,20 @@ def qdaLearn(X,y):
     means = []
     covmats = []
     for i in range(X.shape[0]):
-        key = int(y[i])
+        key = int(y[i]) - 1
         try:
             data_map[key].append(X[i])
         except KeyError:
-            data_map[key] = [X[i]]      
-    for key, value in data_map.items():
-        data_map[key] = np.asarray(data_map[key])
-        means.append(np.mean(data_map[key], axis=0))
-        covmats.append(np.cov(data_map[key].T))
+            data_map[key] = [X[i]]
+            
+    # calculating mean and covaraince matrix together.
+    # QDA assumes diffenet class have different covariance matrix
+    for i in range(len(data_map.keys())):
+        x = np.asarray(data_map[i])
+        mean = np.sum(x, axis=0) / x.shape[0]
+        variance = np.sum(np.square(x - mean), axis=0) / x.shape[0] 
+        means.append(mean)
+        covmats.append(np.diag(variance))
     means = np.asarray(means).T 
     return means,covmats
 
@@ -68,27 +75,30 @@ def ldaTest(means,covmat,Xtest,ytest):
     # Outputs
     # acc - A scalar accuracy value
     # ypred - N x 1 column vector indicating the predicted labels
-
-    # IMPLEMENT THIS METHOD
-    
     ypred = []
     acc = 0
+    means = means.T
+    
+    # calculating inverse of covariance matrix
+    inv_cov = covmat
+    for i in range(covmat.shape[0]):
+        inv_cov[i][i] = 1 / inv_cov[i][i]
+ 
+    # predicting the class for Xtest using LDA, exponent coeff should be minimum for the class
     for j in range(Xtest.shape[0]):
-        result = []
-        for i in range(means.shape[1]):
-            exponent = ((np.matmul(np.matmul((Xtest[j] - means.T[i]).T, np.linalg.inv(covmat)), (Xtest[j] - means.T[i]))) / 2)
-            result.append(exponent)
-            
-        ypred.append(np.argmin(result) +1)
-        
+        best_prob = float('inf') 
+        for i in range(means.shape[0]):
+            mean_diff = Xtest[j] - means[i]
+            exponent = np.matmul(np.matmul(mean_diff.T, inv_cov), mean_diff)
+            if exponent < best_prob:
+                best_prob = exponent
+                predict = i+1
+        ypred.append(predict)
         if ypred[j] == ytest[j]:
             acc+=1
-        
-    print(ypred)
-    acc = acc/Xtest.shape[0]
-    ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
-    
-    return acc,ypred
+    acc = acc / Xtest.shape[0]
+    ypred = np.asarray(ypred).reshape(ytest.shape[0], 1)
+    return acc, ypred
 
 def qdaTest(means,covmats,Xtest,ytest):
     # Inputs
@@ -98,27 +108,36 @@ def qdaTest(means,covmats,Xtest,ytest):
     # Outputs
     # acc - A scalar accuracy value
     # ypred - N x 1 column vector indicating the predicted labels
-
-    # IMPLEMENT THIS METHOD
-    
     ypred = []
     acc = 0
+    means = means.T
+    
+    # calculating determinant and inverse of covariance matrix for each class
+    determinants = []
+    inv_covmats = []
+    for covmat in covmats:
+        inv_covmat = np.zeros(covmat.shape)
+        determinant = 1
+        for j in range(covmat.shape[0]):
+            determinant *= covmat[j][j]
+            inv_covmat[j][j] = 1/covmat[j][j]
+        determinants.append(determinant)
+        inv_covmats.append(inv_covmat)
+    
+    # predicting the class for Xtest using QDA, qda should be maximum for the class
     for j in range(Xtest.shape[0]):
         result = []
-        for i in range(means.shape[1]):
-            determinant = np.linalg.det(covmats[i])
-            exponent = np.exp(-((np.matmul(np.matmul((Xtest[j] - means.T[i]).T, np.linalg.inv(covmats[i])), (Xtest[j] - means.T[i]))) / 2))
-            constant = 1 / (np.sqrt(2 * np.pi * (determinant ** 2)))
-            result.append(constant * exponent)
-            
+        for i in range(means.shape[0]):
+            mean_diff = Xtest[j] - means[i]
+            exponent = np.exp(-(np.matmul(np.matmul(mean_diff.T, inv_covmats[i]), mean_diff) / 2))
+            constant = 1 / (np.sqrt(2 * np.pi * (determinants[i] ** 2)))
+            qda = constant * exponent
+            result.append(qda)
         ypred.append(np.argmax(result) + 1)
-        
         if ypred[j] == ytest[j]:
             acc+=1
-        
     acc = acc/Xtest.shape[0]
     ypred = np.asarray(ypred).reshape(ytest.shape[0],1)
-    
     return acc,ypred
 
 def learnOLERegression(X,y):
@@ -127,8 +146,6 @@ def learnOLERegression(X,y):
     # y = N x 1                                                               
     # Output: 
     # w = d x 1 
-	
-    # IMPLEMENT THIS METHOD 
     return np.dot(np.linalg.inv(np.dot(X.T,X)), np.dot(X.T,y))                                               
 
 def learnRidgeRegression(X,y,lambd):
@@ -138,6 +155,7 @@ def learnRidgeRegression(X,y,lambd):
     # lambd = ridge parameter (scalar)
     # Output:                                                                  
     # w = d x 1
+    
     # seting derivative d(J(w))/d(w) = 0, we get -2X'(y-Xw) + 2.lambd.w = 0
     # solving for w => w = (X'X + lambd.I)'*(X'y)
     dimR, dimC = X.shape
@@ -154,8 +172,6 @@ def testOLERegression(w,Xtest,ytest):
     # ytest = X x 1
     # Output:
     # mse
-    
-    # IMPLEMENT THIS METHOD
     return (np.sum((ytest - np.dot(Xtest,w)) ** 2)) / Xtest.shape[0]
 
 def regressionObjVal(w, X, y, lambd):
@@ -177,15 +193,11 @@ def mapNonLinear(x,p):
     # Outputs:                                                                 
     # Xp - (N x (p+1)) 
 	
-    # IMPLEMENT THIS METHOD
-    
     #Initialize output array Xp
     Xp = np.zeros((x.shape[0], p+1))
-    
     for i in range(x.shape[0]):
         for j in range(p+1):
-            Xp[i][j] = x[i] ** j
-            
+            Xp[i][j] = x[i] ** j        
     return Xp
 
 # Main script
@@ -199,7 +211,6 @@ else:
 
 # LDA
 means,covmat = ldaLearn(X,y)
-print("LDA mean",means)
 ldaacc, ldares = ldaTest(means,covmat,Xtest,ytest)
 print('LDA Accuracy = '+str(ldaacc))
 
@@ -252,6 +263,10 @@ mle_i = testOLERegression(w_i,Xtest_i,ytest)
 print('MSE without intercept '+str(mle))
 print('MSE with intercept '+str(mle_i))
 
+#Plotting OLE weights for report
+#fig = plt.figure(figsize=[12,6])
+#plt.plot(w_i)
+
 # Problem 3
 k = 101
 lambdas = np.linspace(0, 1, num=k)
@@ -263,10 +278,16 @@ for lambd in lambdas:
     mses3_train[i] = testOLERegression(w_l,X_i,y)
     mses3[i] = testOLERegression(w_l,Xtest_i,ytest)
     i = i + 1
-    
-#print(mses3_train)
-#print(mses3)
-    
+
+#Printing MSE for all values of lambda    
+#print("Learn Ridge train with intercept: ", mses3_train)
+#print("Learn Ridge test with intercept : ", mses3)
+
+
+#Plotting OLE weights for report
+#fig = plt.figure(figsize=[12,6])
+#plt.plot(w_l)
+
 fig = plt.figure(figsize=[12,6])
 plt.subplot(1, 2, 1)
 plt.plot(lambdas,mses3_train)
@@ -282,7 +303,7 @@ lambdas = np.linspace(0, 1, num=k)
 i = 0
 mses4_train = np.zeros((k,1))
 mses4 = np.zeros((k,1))
-opts = {'maxiter' : 20}    # Preferred value.                                                
+opts = {'maxiter' : 100}    # Preferred value.                                                
 w_init = np.ones((X_i.shape[1],1))
 for lambd in lambdas:
     args = (X_i, y, lambd)
@@ -292,9 +313,10 @@ for lambd in lambdas:
     mses4_train[i] = testOLERegression(w_l,X_i,y)
     mses4[i] = testOLERegression(w_l,Xtest_i,ytest)
     i = i + 1
-    
-print("Ridge train with intercept: ", mses4_train)
-print("Ridge test with intercept : ", mses4)
+
+#Printing MSE for all values of lambda
+#print("Gradient Descent Ridge train with intercept: ", mses4_train)
+#print("Gradient Descent Ridge test with intercept : ", mses4)
 
 fig = plt.figure(figsize=[12,6])
 plt.subplot(1, 2, 1)
@@ -324,7 +346,8 @@ for p in range(pmax):
     w_d2 = learnRidgeRegression(Xd,y,lambda_opt)
     mses5_train[p,1] = testOLERegression(w_d2,Xd,y)
     mses5[p,1] = testOLERegression(w_d2,Xdtest,ytest)
-    
+
+#Printing MSE for all values of p   
 #print("Train error when lambda is 0 and optimal : ",mses5_train)
 #print("Test error when lambda is 0 and optimal : ",mses5) 
     
