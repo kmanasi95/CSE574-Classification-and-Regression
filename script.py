@@ -165,7 +165,7 @@ def regressionObjVal(w, X, y, lambd):
     w = w.flatten() 
     w = w.reshape(w.shape[0],1)
     diff = y - np.matmul(X, w)
-    error = (np.dot(diff.T, diff) + (lambd*np.dot(w.T, w))) * 0.5
+    error = (np.sum((y - np.matmul(X,w)) ** 2) + (lambd*np.dot(w.T, w)) * 0.5) * 0.5
     error_grad = -2*(np.matmul(X.T, diff)) + 2*lambd*w
     error_grad = error_grad.reshape(error_grad.shape[0])
     return error, error_grad
@@ -292,6 +292,10 @@ for lambd in lambdas:
     mses4_train[i] = testOLERegression(w_l,X_i,y)
     mses4[i] = testOLERegression(w_l,Xtest_i,ytest)
     i = i + 1
+    
+print("Ridge train with intercept: ", mses4_train)
+print("Ridge test with intercept : ", mses4)
+
 fig = plt.figure(figsize=[12,6])
 plt.subplot(1, 2, 1)
 plt.plot(lambdas,mses4_train)
