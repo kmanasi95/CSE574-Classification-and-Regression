@@ -284,7 +284,7 @@ for lambd in lambdas:
 #print("Learn Ridge test with intercept : ", mses3)
 
 
-#Plotting OLE weights for report
+#Plotting Ridge weights for report
 #fig = plt.figure(figsize=[12,6])
 #plt.plot(w_l)
 
